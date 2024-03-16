@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Jetson Doorbell</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="app.css" />
+  </head>
+  <body>
+    <div id="container">
+      <div id="info">
+        <div id="title">
+          <h1>Choose a Doorbell Tune</h1>
+          <p>
+            Currently selected tune file is: <span id="wavfile">(none)</span>.
+          </p>
+        </div>
+        <div id="controls">
+          <div id="selectdiv">
+            <form id="selectform">
+              <label for="select">Available tunes:</label><br />
+              <select name="Tune File" id="select"></select>
+            </form>
+            <form id="play">
+              <button id="play_button" type="submit">Play Me</button>
+            </form>
+          </div>
+          <div id="volumediv">
+            <label for="range">Volume</label>
+            <input
+              id="range"
+              type="range"
+              min="0"
+              max="100"
+              step="10"
+              list="markers"
+            />
+            <datalist id="markers">
+              <option value="0"></option>
+              <option value="20"></option>
+              <option value="40"></option>
+              <option value="60"></option>
+              <option value="80"></option>
+              <option value="100"></option>
+            </datalist>
+          </div>
+        </div>
+      </div>
+      <div id="wrapper">
+        <div id="h2div">
+          <h2>Upload New Doorbell Tune</h2>
+        </div>
+        <input type="file" id="doorbell_file" hidden="hidden" />
+        <button id="upload_button">Select file...</button>
+        <span id="el3">No file chosen</span>
+        <div>
+          <progress id="progressBar" value="0">Half Way</progress>
+        </div>
+      </div>
+      <div id="fw">
+        <p><a href="fw.html">Firmware</a></p>
+      </div>
+    </div>
+  </body>
+  <script src="app.js"></script>
+</html>

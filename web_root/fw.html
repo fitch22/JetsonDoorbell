@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Firmware</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="app.css" />
+  </head>
+  <body>
+    <div id="fwcontainer">
+      <div id="fwinfo">
+        <div id="title">
+          <h1>Current Firmware</h1>
+        </div>
+        <div id="fw_details">
+          <table id="fw_table">
+            <tr>
+              <td>Project:</td>
+              <td id="project">Jetson</td>
+            </tr>
+            <tr>
+              <td>Build Date:</td>
+              <td id="datetime">Today</td>
+            </tr>
+            <tr>
+              <td>Version:</td>
+              <td id="version">A</td>
+            </tr>
+            <tr>
+              <td>Partition Label:</td>
+              <td id="label">Label</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div id="fwwrapper">
+        <div id="h2div">
+          <h2>Upload New Firmware</h2>
+        </div>
+        <div>
+          <input type="file" id="fw_file" accept=".bin" style="display: none" />
+          <button id="fw_select">Select file...</button>
+          <span id="filename">No file chosen</span>
+          <div>
+            <progress id="progressBar" value="0">Half Way</progress>
+          </div>
+          <form action="">
+            <button type="button" id="fw_upload">Upload</button>
+          </form>
+        </div>
+      </div>
+      <div id="home">
+        <p><a href="/">Home</a></p>
+      </div>
+    </div>
+  </body>
+  <script src="fw.js"></script>
+</html>

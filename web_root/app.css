@@ -1,0 +1,114 @@
+#container {
+  font-family: "Helvetica", sans-serif;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 0.5em;
+  padding: 2.5em 2.5em 0em 2.5em;
+  border: 2px solid black;
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 600px;
+  box-shadow: 5px 5px 10px;
+  justify-content: safe center;
+}
+#container:before {
+  content: "";
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  background-image: url("background.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center 18%;
+  opacity: 0.25;
+  z-index: -1;
+}
+#info {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.5em;
+  padding: 0 2em 2em 2em;
+  border: 2px solid black;
+  text-align: center;
+  justify-content: space-between;
+}
+#title {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
+#controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: baseline;
+}
+#selectdiv {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+#volumediv {
+  display: flex;
+  flex-direction: column;
+}
+#wrapper {
+  margin-top: 2em;
+  padding: 0 2em 2em 2em;
+  border: 2px solid black;
+  border-radius: 5px;
+}
+#h2div {
+  margin-top: 1em;
+  text-align: center;
+}
+#progressBar {
+  width: 100%;
+  color: darkred;
+}
+#fw,
+#home {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 2.5em;
+}
+#fwcontainer {
+  font-family: "Helvetica", sans-serif;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 0.5em;
+  padding: 2.5em 2.5em 0em 2.5em;
+  border: 2px solid #484041;
+  background-color: #e2dfdf;
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 600px;
+  box-shadow: 5px 5px 10px;
+  justify-content: safe center;
+}
+#fwinfo {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.5em;
+  padding: 0 2em 2em 2em;
+  border: 2px solid #484041;
+  text-align: center;
+  background-color: #e9e8ed;
+}
+#fwwrapper {
+  margin-top: 2em;
+  padding: 0 2em 2em 2em;
+  border: 2px solid #484041;
+  border-radius: 5px;
+  background-color: #e9e8ed;
+}
+#fw_table {
+  width: 60%;
+  text-align: left;
+}

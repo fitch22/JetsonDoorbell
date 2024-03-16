@@ -1,0 +1,45 @@
+{
+  "idf.adapterTargetName": "esp32s3",
+  "idf.portWin": "COM11",
+  "idf.openOcdConfigs": ["board/esp32s3-builtin.cfg"],
+  "idf.flashType": "UART",
+  "files.associations": {
+    "sdmmc_cmd.h": "c",
+    "cerrno": "c",
+    "freertos.h": "c",
+    "sdkconfig.h": "c",
+    "stdint.h": "c",
+    "gpio.h": "c",
+    "bitset": "c",
+    "algorithm": "c",
+    "compare": "c",
+    "i2s_std.h": "c",
+    "esp_vfs_fat.h": "c",
+    "format_wav.h": "c",
+    "task.h": "c",
+    "esp_check.h": "c",
+    "isr.h": "c",
+    "stdlib.h": "c",
+    "mongoose.h": "c",
+    "i2s.h": "c",
+    "string.h": "c",
+    "net.h": "c",
+    "regex": "c",
+    "xiosbase": "c",
+    "ff.h": "c",
+    "ffconf.h": "c",
+    "sdmmc_types.h": "c",
+    "global.h": "c",
+    "event_groups.h": "c",
+    "esp_wifi.h": "c",
+    "esp_netif.h": "c",
+    "conf.h": "c",
+    "sd.h": "c"
+  },
+  "[c]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  }
+}
