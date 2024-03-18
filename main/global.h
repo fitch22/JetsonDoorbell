@@ -17,6 +17,7 @@ extern uint8_t *buffer; // buffer to store WAV file segments
 extern bool at_eof;
 extern bool last_fill;
 extern bool stereo;
+extern uint32_t remaining_data;
 extern FILE *fp;
 extern i2s_chan_handle_t tx_chan; // I2S tx channel handle
 extern char tune[64];

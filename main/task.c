@@ -30,10 +30,14 @@ void dma_buffer_fill_task(void *pvParameters) {
       last_fill = true;
     } else {
       uint16_t dma_buffer_size = stereo ? DMA_BUFF_SIZE : DMA_BUFF_SIZE / 2;
+      uint32_t read_size; // how many bytes to read
+      read_size = remaining_data > dma_buffer_size ? (uint32_t)dma_buffer_size
+                                                   : remaining_data;
 #ifdef HW_PROFILE
       gpio_set_level(48, 1);
 #endif
-      size_t count = fread(buffer, 1, dma_buffer_size, fp);
+      size_t count = fread(buffer, 1, read_size, fp);
+      remaining_data -= (uint32_t)count;
 #ifdef HW_PROFILE
       gpio_set_level(48, 0);
 #endif
@@ -54,7 +58,9 @@ void dma_buffer_fill_task(void *pvParameters) {
 #ifdef HW_PROFILE
       gpio_set_level(42, 0);
 #endif
-      if (count < dma_buffer_size) {
+      if ((count < read_size) || (remaining_data == 0)) {
+        ESP_LOGI(TAG, "count = %d, read_size = %lud, remaining_data = %lud",
+                 count, read_size, remaining_data);
         ESP_LOGI(TAG, "At EOF");
         for (uint16_t i = count; i < DMA_BUFF_SIZE; i++)
           buffer[i] = 0;

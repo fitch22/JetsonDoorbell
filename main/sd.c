@@ -95,6 +95,7 @@ esp_err_t open_file(const char *filename) {
       ESP_LOGE(TAG, "First read only %d elements", count);
       return ESP_FAIL;
     }
+    remaining_data = header.data_chunk.subchunk_size - count;
 
     // duplicate if mono
     if (!stereo) {
@@ -120,6 +121,8 @@ esp_err_t open_file(const char *filename) {
       ESP_LOGE(TAG, "Second read only %d elements", count);
       return ESP_FAIL;
     }
+    remaining_data -= count;
+
     // duplicate if mono
     if (!stereo) {
       for (uint16_t i = 0; i < dma_buffer_size / 2; i++) {

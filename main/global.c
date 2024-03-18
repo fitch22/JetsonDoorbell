@@ -21,6 +21,7 @@ bool at_eof = false;
 bool last_fill = false;
 
 bool stereo = true;
+uint32_t remaining_data; // wave file data left to read
 
 FILE *fp;
 
