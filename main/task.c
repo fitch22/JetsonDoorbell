@@ -59,8 +59,8 @@ void dma_buffer_fill_task(void *pvParameters) {
       gpio_set_level(42, 0);
 #endif
       if ((count < read_size) || (remaining_data == 0)) {
-        ESP_LOGI(TAG, "count = %d, read_size = %lu, remaining_data = %lu",
-                 count, read_size, remaining_data);
+        // ESP_LOGI(TAG, "count = %d, read_size = %lu, remaining_data = %lu",
+        //          count, read_size, remaining_data);
         ESP_LOGI(TAG, "At EOF");
         for (uint16_t i = count; i < DMA_BUFF_SIZE; i++)
           buffer[i] = 0;

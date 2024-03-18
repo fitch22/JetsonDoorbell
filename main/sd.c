@@ -4,7 +4,6 @@
 #include "driver/i2s_std.h"
 #include "driver/sdmmc_host.h"
 #include "esp_vfs_fat.h"
-#include "format_wav.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "global.h"
@@ -145,7 +144,7 @@ esp_err_t open_file(const char *filename) {
       }
     }
 
-    ESP_LOGI(TAG, "File is %s", stereo ? "stereo" : "mono");
+    // ESP_LOGI(TAG, "File is %s", stereo ? "stereo" : "mono");
 
     // adjust clock rate
     i2s_std_clk_config_t tx_std_clk =
