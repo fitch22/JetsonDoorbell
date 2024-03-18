@@ -11,6 +11,7 @@
 #include "gpio.h"
 #include "sdmmc_cmd.h"
 #include "tag.h"
+#include <string.h>
 
 esp_err_t sd_setup(void) {
 
@@ -63,7 +64,9 @@ esp_err_t open_file(const char *filename) {
   if (xSemaphoreTake(xPlay, 0)) {
     ESP_LOGI(TAG, "Opening file %s", filename);
 
-    wav_header_t header;
+    wave_header_t header;
+    chunk_header_t ck_header;
+    fmt_chunk_t fmt_chunk;
     size_t count;
 
     fp = fopen(filename, "r");
@@ -71,18 +74,84 @@ esp_err_t open_file(const char *filename) {
       ESP_LOGE(TAG, "Failed to open file for reading");
       return ESP_FAIL;
     }
-    count = fread(&header, sizeof(wav_header_t), 1, fp);
-    ESP_LOGI(TAG, "no channels: %d, sample rate: %ld, bits: %d",
-             header.fmt_chunk.num_of_channels, header.fmt_chunk.sample_rate,
-             header.fmt_chunk.bits_per_sample);
+    // Read header (RIFFxxxxWAVE)
+    fread(&header, sizeof(wave_header_t), 1, fp);
+    // verify id == "RIFF"
+    if (strncmp(header.id, "RIFF", 4)) {
+      ESP_LOGE(TAG, "ID of first chunk != \"RIFF\"");
+      fclose(fp);
+      return ESP_FAIL;
+    }
+    // verify format == "WAVE"
+    if (strncmp(header.format, "WAVE", 4)) {
+      ESP_LOGE(TAG, "Chunk format != \"WAVE\"");
+      fclose(fp);
+      return ESP_FAIL;
+    }
 
-    stereo = header.fmt_chunk.num_of_channels == 2;
+    // look for "fmt " chunk, skip any others
+    while (1) {
+      fread(&ck_header, sizeof(chunk_header_t), 1, fp);
+      if (strncmp(ck_header.id, "fmt ", 4)) {
+        fseek(fp, ck_header.size, SEEK_CUR); // skip over data
+        ESP_LOGI(TAG, "Searching for \"fmt \", skipping \"%.4s\"",
+                 ck_header.id);
+      } else {
+        ESP_LOGI(TAG, "Found fmt chunk, size = %lu", ck_header.size);
+        break;
+      }
+    }
+    // found "fmt ", now read the format information
+    fread(&fmt_chunk, sizeof(fmt_chunk_t), 1, fp);
+    // verify PCM
+    if (fmt_chunk.audio_format != 1) {
+      ESP_LOGE(TAG, "PCM only audio format supported");
+      fclose(fp);
+      return ESP_FAIL;
+    }
+    // verify mono or stereo
+    if (fmt_chunk.num_of_channels > 2) {
+      ESP_LOGE(TAG, "Number of channels supported is 1 or 2");
+      fclose(fp);
+      return ESP_FAIL;
+    }
+    // verify sample rate <= 48K
+    if (fmt_chunk.sample_rate > 48000) {
+      ESP_LOGE(TAG, "Unsupported sample rate %lud", fmt_chunk.sample_rate);
+      fclose(fp);
+      return ESP_FAIL;
+    }
+    // verify 16bit samples
+    if (fmt_chunk.bits_per_sample != 16) {
+      ESP_LOGE(TAG, "Bits per sample must be 16");
+      fclose(fp);
+      return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "no channels: %d, sample rate: %ld, bits: %d",
+             fmt_chunk.num_of_channels, fmt_chunk.sample_rate,
+             fmt_chunk.bits_per_sample);
+    stereo = fmt_chunk.num_of_channels == 2;
+
+    // look for "data" chunk, skip any others
+    while (1) {
+      fread(&ck_header, sizeof(chunk_header_t), 1, fp);
+      if (strncmp(ck_header.id, "data", 4)) {
+        fseek(fp, ck_header.size, SEEK_CUR); // skip over data
+        ESP_LOGI(TAG, "Searching for \"data\", skipping \"%.4s\"",
+                 ck_header.id);
+      } else {
+        ESP_LOGI(TAG, "Found data chunk, size = %lu", ck_header.size);
+        break;
+      }
+    }
+
     ESP_LOGI(TAG, "File is %s", stereo ? "stereo" : "mono");
+
     // adjust clock rate
     i2s_std_clk_config_t tx_std_clk =
-        I2S_STD_CLK_DEFAULT_CONFIG(header.fmt_chunk.sample_rate);
+        I2S_STD_CLK_DEFAULT_CONFIG(fmt_chunk.sample_rate);
     i2s_channel_reconfig_std_clock(tx_chan, &tx_std_clk);
-    ESP_LOGI(TAG, "New clock rate is %d", (int)tx_std_clk.sample_rate_hz);
+    ESP_LOGI(TAG, "Set clock rate to %d", (int)tx_std_clk.sample_rate_hz);
 
     // When the source is mono, we have to duplicate each sample
     uint16_t dma_buffer_size = stereo ? DMA_BUFF_SIZE : DMA_BUFF_SIZE / 2;
@@ -95,7 +164,7 @@ esp_err_t open_file(const char *filename) {
       ESP_LOGE(TAG, "First read only %d elements", count);
       return ESP_FAIL;
     }
-    remaining_data = header.data_chunk.subchunk_size - count;
+    remaining_data = ck_header.size - count;
 
     // duplicate if mono
     if (!stereo) {
