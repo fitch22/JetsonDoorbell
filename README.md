@@ -17,6 +17,8 @@ https://online-audio-converter.com/
 https://cloudconvert.com/audio-converter  
 Or you can use an application such as [Audacity](https://www.audacityteam.org/). Audacity can do much more than convert, you can also adjust the tonal balance of the tune which can help with small, less than ideal speakers.
 
+One tune you definitely want to get is the [Jetson's Doorbell](https://orangefreesounds.com/jetsons-doorbell/), just remember to convert it to a WAVE file.
+
 ## Building the Firmware
 
 Jetson Doorbell uses an ESP32-S3-N4 module running at 240MHz.
