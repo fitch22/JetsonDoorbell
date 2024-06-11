@@ -10,8 +10,8 @@
 bool i2s_write_callback(i2s_chan_handle_t handle, i2s_event_data_t *event,
                         void *user_ctx) {
 #ifdef HW_PROFILE
-  gpio_set_level(47, 1);
-  gpio_set_level(47, 0);
+  gpio_set_level(LA0, 1);
+  gpio_set_level(LA0, 0);
 #endif
   vTaskNotifyGiveFromISR(xFillTask, NULL);
 

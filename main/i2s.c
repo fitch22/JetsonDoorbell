@@ -2,6 +2,7 @@
 #include "driver/i2s_std.h"
 #include "esp_log.h"
 #include "global.h"
+#include "gpio.h"
 #include "isr.h"
 #include "tag.h"
 
@@ -31,9 +32,9 @@ void i2s_setup(void) {
           {
               .mclk = I2S_GPIO_UNUSED, // some codecs may require mclk signal,
                                        // this example doesn't need it
-              .bclk = 13,
-              .ws = 14,
-              .dout = 12,
+              .bclk = BCLK_PIN,
+              .ws = WS_PIN,
+              .dout = DIN_PIN,
               .din = I2S_GPIO_UNUSED,
               .invert_flags =
                   {

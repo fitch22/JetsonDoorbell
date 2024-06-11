@@ -39,12 +39,12 @@ esp_err_t sd_setup(void) {
   // has these signals.
   sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
   slot_config.width = 4;
-  slot_config.clk = 7; // 6;
-  slot_config.cmd = 6; // 7;
-  slot_config.d0 = 15; // 5;
-  slot_config.d1 = 16; // 4;
-  slot_config.d2 = 4;  // 16;
-  slot_config.d3 = 5;  // 15;
+  slot_config.clk = CLK_PIN;
+  slot_config.cmd = CMD_PIN;
+  slot_config.d0 = DAT0_PIN;
+  slot_config.d1 = DAT1_PIN;
+  slot_config.d2 = DAT2_PIN;
+  slot_config.d3 = DAT3_PIN;
   slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
   ESP_LOGI(TAG, "Mounting filesystem");

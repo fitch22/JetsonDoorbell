@@ -34,15 +34,15 @@ void dma_buffer_fill_task(void *pvParameters) {
       read_size = remaining_data > dma_buffer_size ? (uint32_t)dma_buffer_size
                                                    : remaining_data;
 #ifdef HW_PROFILE
-      gpio_set_level(48, 1);
+      gpio_set_level(LA1, 1);
 #endif
       size_t count = fread(buffer, 1, read_size, fp);
       remaining_data -= (uint32_t)count;
 #ifdef HW_PROFILE
-      gpio_set_level(48, 0);
+      gpio_set_level(LA1, 0);
 #endif
 #ifdef HW_PROFILE
-      gpio_set_level(42, 1);
+      gpio_set_level(LA2, 1);
 #endif
       // duplicate if mono
       if (!stereo) {
@@ -56,7 +56,7 @@ void dma_buffer_fill_task(void *pvParameters) {
           buff[i] = (int16_t)(buff[i] * volume);
       }
 #ifdef HW_PROFILE
-      gpio_set_level(42, 0);
+      gpio_set_level(LA2, 0);
 #endif
       if ((count < read_size) || (remaining_data == 0)) {
         // ESP_LOGI(TAG, "count = %d, read_size = %lu, remaining_data = %lu",
@@ -67,13 +67,13 @@ void dma_buffer_fill_task(void *pvParameters) {
         at_eof = true;
       }
 #ifdef HW_PROFILE
-      gpio_set_level(9, 1);
+      gpio_set_level(LA3, 1);
 #endif
       if (i2s_channel_write(tx_chan, buffer, DMA_BUFF_SIZE, NULL, 1000) !=
           ESP_OK)
         ESP_LOGE(TAG, "i2s write failed.");
 #ifdef HW_PROFILE
-      gpio_set_level(9, 0);
+      gpio_set_level(LA3, 0);
 #endif
     }
   }
