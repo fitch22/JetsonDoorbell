@@ -6,9 +6,9 @@
 #define LA_SEL ((1ULL << LA0) | (1ULL << LA1) | (1ULL << LA2) | (1ULL << LA3))
 
 // Other GPIO
-#define BUTTON_PIN 17                       // used for doorbell button
-#define BUTTON_PIN_SEL (1ULL << BUTTON_PIN) // GPIO 10
-#define BUTTON2_PIN 18
+#define BUTTON1_PIN 17 // used for doorbell button1
+#define BUTTON1_PIN_SEL (1ULL << BUTTON1_PIN)
+#define BUTTON2_PIN 18 // used for doorbell button2
 #define BUTTON2_PIN_SEL (1ULL << BUTTON2_PIN)
 #define SD_MODE_PIN 14 // enable/disable for MAX98357A
 #define SD_MODE_PIN_SEL (1ULL << SD_MODE_PIN)

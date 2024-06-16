@@ -12,15 +12,15 @@
     <div id="container">
       <div id="info">
         <div id="title">
-          <h1>Choose a Doorbell Tune</h1>
-          <p>
+          <h1>Choose Doorbell Tunes</h1>
+          <!-- <p>
             Currently selected tune file is: <span id="wavfile">(none)</span>.
-          </p>
+          </p> -->
         </div>
         <div id="controls">
           <div id="selectdiv">
             <form id="selectform">
-              <label for="select">Available tunes:</label><br />
+              <label for="select">Doorbell 1 tune:</label><br />
               <select name="Tune File" id="select"></select>
             </form>
             <form id="play">
@@ -28,22 +28,54 @@
             </form>
           </div>
           <div id="volumediv">
-            <label for="range">Volume</label>
+            <label for="range">Doorbell 1 Volume</label>
             <input
               id="range"
               type="range"
-              min="0"
-              max="100"
-              step="10"
+              min="-40"
+              max="0"
+              step="1"
               list="markers"
             />
             <datalist id="markers">
+              <option value="-40"></option>
+              <option value="-32"></option>
+              <option value="-24"></option>
+              <option value="-16"></option>
+              <option value="-8"></option>
               <option value="0"></option>
-              <option value="20"></option>
-              <option value="40"></option>
-              <option value="60"></option>
-              <option value="80"></option>
-              <option value="100"></option>
+            </datalist>
+          </div>
+        </div>
+        <br />
+        <br />
+        <div id="controls2">
+          <div id="selectdiv2">
+            <form id="selectform2">
+              <label for="select2">Doorbell 2 tune:</label><br />
+              <select name="Tune File 2" id="select2"></select>
+            </form>
+            <form id="play2">
+              <button id="play_button2" type="submit">Play Me</button>
+            </form>
+          </div>
+          <div id="volumediv2">
+            <label for="range2">Doorbell 2 Volume</label>
+            <input
+              id="range2"
+              type="range"
+              min="-40"
+              max="0"
+              step="1"
+              list="markers2"
+            />
+            <datalist id="markers2">
+              <option value="-40"></option>
+              <option value="-32"></option>
+              <option value="-24"></option>
+              <option value="-16"></option>
+              <option value="-8"></option>
+              <option value="0"></option>
             </datalist>
           </div>
         </div>

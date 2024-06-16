@@ -20,12 +20,27 @@ form.addEventListener("submit", playSound);
 var playDone = true;
 
 async function playSound(event) {
-  var url = "/play?name=" + filename;
+  var url = "/play?name=" + filename1 + "&vol=1";
   event.preventDefault();
   if (playDone) {
     playDone = false;
     fetch(url).then(() => {
       playDone = true;
+    });
+  }
+}
+
+var form2 = document.getElementById("play2");
+form2.addEventListener("submit", playSound2);
+var playDone2 = true;
+
+async function playSound2(event) {
+  var url = "/play?name=" + filename2 + "&vol=2";
+  event.preventDefault();
+  if (playDone2) {
+    playDone2 = false;
+    fetch(url).then(() => {
+      playDone2 = true;
     });
   }
 }
@@ -102,21 +117,31 @@ input.onchange = function (ev) {
 };
 
 const defaultFilename = "jetson.wav";
-var filename = defaultFilename;
+var filename1 = defaultFilename;
+var filename2 = defaultFilename;
 var fileSelect = document.getElementById("select");
-var wavfile = document.getElementById("wavfile");
-var volume = "80";
+var fileSelect2 = document.getElementById("select2");
+//var wavfile = document.getElementById("wavfile");
+var volume = "-20";
+var volume2 = "-20";
 
 var listFiles = function () {
   fetch("/list")
     .then((res) => res.text())
     .then((text) => {
+      //var names = ["bob", "nancy", "tom"]; //text.split(",").sort(compareFn);
       var names = text.split(",").sort(compareFn);
       for (let i = 0; i < names.length; i++) {
         let opt = document.createElement("option");
         opt.value = names[i];
         opt.innerHTML = names[i];
         fileSelect.append(opt);
+      }
+      for (let i = 0; i < names.length; i++) {
+        let opt2 = document.createElement("option");
+        opt2.value = names[i];
+        opt2.innerHTML = names[i];
+        fileSelect2.append(opt2);
       }
       getDefaultFile();
     });
@@ -131,9 +156,16 @@ function compareFn(a, b) {
 }
 
 fileSelect.addEventListener("change", (event) => {
-  wavfile.textContent = filename = event.target.value;
-  console.log(`Changed tune to ${filename}`);
-  var url = "/conf/set?file=" + filename;
+  filename1 = event.target.value;
+  console.log(`Changed Doorbell 1 tune to ${filename1}`);
+  var url = "/conf/set?file1=" + filename1;
+  fetch(url).then();
+});
+
+fileSelect2.addEventListener("change", (event) => {
+  filename2 = event.target.value;
+  console.log(`Changed Doorbell 2 tune to ${filename2}`);
+  var url = "/conf/set?file2=" + filename2;
   fetch(url).then();
 });
 
@@ -142,27 +174,50 @@ setVolume.addEventListener("change", changeVolume);
 
 function changeVolume(event) {
   const newVolume = event.target.value;
-  console.log(`Changed volume to ${newVolume}%`);
-  var url = "/conf/set?volume=" + newVolume;
+  console.log(`Changed Doorbell 1 volume to ${newVolume}dB`);
+  var url = "/conf/set?volume1=" + newVolume;
+  fetch(url).then();
+}
+
+var setVolume2 = document.getElementById("range2");
+setVolume2.addEventListener("change", changeVolume2);
+
+function changeVolume2(event) {
+  const newVolume = event.target.value;
+  console.log(`Changed Doorbell 2 volume to ${newVolume}dB`);
+  var url = "/conf/set?volume2=" + newVolume;
   fetch(url).then();
 }
 
 const getDefaultFile = function () {
-  fetch("/conf/get/file")
+  fetch("/conf/get/file1")
     .then((res) => res.text())
     .then((text) => {
-      console.log("Retrieved default File: ", text);
-      wavfile.textContent = filename = text;
-      fileSelect.value = filename;
+      console.log("Retrieved Doorbell 1 tune: ", text);
+      //wavfile.textContent = filename = text;
+      fileSelect.value = filename1 = text;
+    });
+  fetch("/conf/get/file2")
+    .then((res) => res.text())
+    .then((text) => {
+      console.log("Retrieved Doorbell 2 tune: ", text);
+      //wavfile.textContent = filename = text;
+      fileSelect2.value = filename2 = text;
     });
 };
 
 const getVolume = function () {
-  fetch("/conf/get/volume")
+  fetch("/conf/get/volume1")
     .then((res) => res.text())
     .then((text) => {
-      console.log("Retrieved default Volume: ", text);
+      console.log("Retrieved Doorbell 1 Volume: ", text, "dB");
       setVolume.value = volume = text;
+    });
+  fetch("/conf/get/volume2")
+    .then((res) => res.text())
+    .then((text) => {
+      console.log("Retrieved Doorbell 2 Volume: ", text, "dB");
+      setVolume2.value = volume2 = text;
     });
 };
 

@@ -8,9 +8,10 @@ char wifi_ssid[32];
 char wifi_pass[64];
 char hostname[16];
 
-TaskHandle_t xFillTask = NULL;   // handle for fill task
-TaskHandle_t xButtonTask = NULL; // handle for doorbell button task
-SemaphoreHandle_t xPlay = NULL;  // Semaphore to allow only one tune to play
+TaskHandle_t xFillTask = NULL;    // handle for fill task
+TaskHandle_t xButton1Task = NULL; // handle for doorbell button1 task
+TaskHandle_t xButton2Task = NULL; // handle for doorbell button2 task
+SemaphoreHandle_t xPlay = NULL;   // Semaphore to allow only one tune to play
 
 // The DMA buffer is 4092 bytes (not 4096)
 // The I2S component keeps track of bytes, so should we
@@ -27,7 +28,11 @@ FILE *fp;
 
 i2s_chan_handle_t tx_chan; // I2S tx channel handle
 
-// These are the currently selected tune file and volume
-char tune[64];
-char vol[5];
-float volume = 0.2;
+// These are the currently selected tune files and volumes
+char tune1[64];
+char tune2[64];
+char vol1[5];
+char vol2[5];
+float volume;
+float volume1 = 0.2;
+float volume2 = 0.2;

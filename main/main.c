@@ -36,7 +36,8 @@ void app_main(void) {
   xTaskCreate(dma_buffer_fill_task, "Fill Task", 4096, NULL, 10, &xFillTask);
   xPlay = xSemaphoreCreateBinary();
   xSemaphoreGive(xPlay);
-  xTaskCreate(button_play_task, "Button Task", 4096, NULL, 10, &xButtonTask);
+  xTaskCreate(button1_play_task, "Button1 Task", 4096, NULL, 10, &xButton1Task);
+  xTaskCreate(button2_play_task, "Button2 Task", 4096, NULL, 10, &xButton2Task);
 
   if (wifi_init(wifi_ssid, wifi_pass) != ESP_OK)
     error_blink(3);

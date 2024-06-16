@@ -18,7 +18,8 @@ void dma_buffer_fill_task(void *pvParameters) {
       fclose(fp);
       ESP_LOGI(TAG, "Shutting down MAX98357A");
       gpio_set_level(SD_MODE_PIN, 0); // turn off MAX98357A
-      gpio_intr_enable(BUTTON_PIN);
+      gpio_intr_enable(BUTTON1_PIN);
+      gpio_intr_enable(BUTTON2_PIN);
       xSemaphoreGive(xPlay);
     } else if (at_eof) {
       ESP_LOGI(TAG, "Very last buffer");
@@ -79,14 +80,30 @@ void dma_buffer_fill_task(void *pvParameters) {
   }
 }
 
-void button_play_task(void *pvParameters) {
+void button1_play_task(void *pvParameters) {
   char path[80];
 
   for (;;) {
     // Block and wait for interrupt
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    ESP_LOGI(TAG, "Playing tune %s from button", tune);
-    sprintf(path, "%s/tunes/%s", MOUNT_POINT, tune);
-    open_file(path);
+    if (xSemaphoreTake(xPlay, 30000 / portTICK_PERIOD_MS)) {
+      ESP_LOGI(TAG, "Playing tune %s from button 1", tune1);
+      sprintf(path, "%s/tunes/%s", MOUNT_POINT, tune1);
+      open_file(path, 1);
+    }
+  }
+}
+
+void button2_play_task(void *pvParameters) {
+  char path[80];
+
+  for (;;) {
+    // Block and wait for interrupt
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if (xSemaphoreTake(xPlay, 30000 / portTICK_PERIOD_MS)) {
+      ESP_LOGI(TAG, "Playing tune %s from button 2", tune2);
+      sprintf(path, "%s/tunes/%s", MOUNT_POINT, tune2);
+      open_file(path, 2);
+    }
   }
 }

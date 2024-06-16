@@ -4,34 +4,63 @@
 #include "global.h"
 #include "sd.h"
 #include "tag.h"
+#include <math.h>
 
 esp_err_t restore_conf(void) {
   char tmp[64];
-  FILE *fp = fopen(MOUNT_POINT "/conf/filename.txt", "r");
+  FILE *fp = fopen(MOUNT_POINT "/conf/filename1.txt", "r");
   if (fp != NULL) {
     fscanf(fp, "%s", tmp);
     if (tmp[0] != '\0') {
-      ESP_LOGI(TAG, "Restoring tune: %s", tmp);
-      strcpy(tune, tmp);
+      ESP_LOGI(TAG, "Restoring Doorbell 1 tune: %s", tmp);
+      strcpy(tune1, tmp);
     }
     fclose(fp);
   } else {
-    ESP_LOGI(TAG, "Could not open \"/conf/filename.txt\" for reading.");
+    ESP_LOGI(TAG, "Could not open \"/conf/filename1.txt\" for reading.");
     return ESP_FAIL;
   }
 
-  fp = fopen(MOUNT_POINT "/conf/volume.txt", "r");
+  fp = fopen(MOUNT_POINT "/conf/filename2.txt", "r");
   if (fp != NULL) {
     fscanf(fp, "%s", tmp);
     if (tmp[0] != '\0') {
-      ESP_LOGI(TAG, "Restoring volume: %s%%", tmp);
-      strcpy(vol, tmp);
-      char *ptr;
-      volume = (float)(strtoimax(tmp, &ptr, 10) / 100.);
+      ESP_LOGI(TAG, "Restoring Doorbell 2 tune: %s", tmp);
+      strcpy(tune2, tmp);
     }
     fclose(fp);
   } else {
-    ESP_LOGI(TAG, "Could not open \"/conf/volume.txt\" for reading.");
+    ESP_LOGI(TAG, "Could not open \"/conf/filename2.txt\" for reading.");
+    return ESP_FAIL;
+  }
+
+  fp = fopen(MOUNT_POINT "/conf/volume1.txt", "r");
+  if (fp != NULL) {
+    fscanf(fp, "%s", tmp);
+    if (tmp[0] != '\0') {
+      ESP_LOGI(TAG, "Restoring Doorbell 1 volume: %sdB", tmp);
+      strcpy(vol1, tmp);
+      char *ptr;
+      volume1 = (float)pow(10, atof(tmp) / 20.);
+    }
+    fclose(fp);
+  } else {
+    ESP_LOGI(TAG, "Could not open \"/conf/volume1.txt\" for reading.");
+    return ESP_FAIL;
+  }
+
+  fp = fopen(MOUNT_POINT "/conf/volume2.txt", "r");
+  if (fp != NULL) {
+    fscanf(fp, "%s", tmp);
+    if (tmp[0] != '\0') {
+      ESP_LOGI(TAG, "Restoring Doorbell 2 volume: %sdB", tmp);
+      strcpy(vol2, tmp);
+      char *ptr;
+      volume2 = (float)pow(10, atof(tmp) / 20.);
+    }
+    fclose(fp);
+  } else {
+    ESP_LOGI(TAG, "Could not open \"/conf/volume2.txt\" for reading.");
     return ESP_FAIL;
   }
 
@@ -94,16 +123,20 @@ static void handle_upload(struct mg_connection *c, struct mg_http_message *hm) {
 }
 
 static void handle_play(struct mg_connection *c, struct mg_http_message *hm) {
-  char path[80], name[64];
+  char path[80], name[64], vol[5];
   mg_http_get_var(&hm->query, "name", name, sizeof(name));
+  mg_http_get_var(&hm->query, "vol", vol, sizeof(vol));
   mg_snprintf(path, sizeof(path), MOUNT_POINT "/tunes/%s", name);
   if (name[0] == '\0') {
     mg_http_reply(c, 400, "", "%s", "name required");
   } else if (!mg_path_is_sane(path)) {
     mg_http_reply(c, 400, "", "%s", "invalid path");
   } else {
-    open_file(path);
     mg_http_reply(c, 200, NULL, "");
+    if (xSemaphoreTake(xPlay, 30000 / portTICK_PERIOD_MS)) {
+      ESP_LOGI(TAG, "Playing tune %s from browser, volume = %s", name, vol);
+      open_file(path, atoi(vol));
+    }
   }
 }
 
@@ -138,20 +171,36 @@ static void handle_list(struct mg_connection *c) {
   mg_http_reply(c, 200, "Content-Type: text/plain\r\n", names);
 }
 
-static void handle_conf_get_file(struct mg_connection *c,
-                                 struct mg_http_message *hm) {
+static void handle_conf_get_file1(struct mg_connection *c,
+                                  struct mg_http_message *hm) {
 
   // return the tune file
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", tune);
-  ESP_LOGI(TAG, "Retrieving tune to play: %s", tune);
+  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", tune1);
+  ESP_LOGI(TAG, "Retrieving Doorbell 1 tune: %s", tune1);
 }
 
-static void handle_conf_get_volume(struct mg_connection *c,
-                                   struct mg_http_message *hm) {
+static void handle_conf_get_file2(struct mg_connection *c,
+                                  struct mg_http_message *hm) {
+
+  // return the tune file
+  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", tune2);
+  ESP_LOGI(TAG, "Retrieving Doorbell 2 tune: %s", tune2);
+}
+
+static void handle_conf_get_volume1(struct mg_connection *c,
+                                    struct mg_http_message *hm) {
 
   // return the volume
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", vol);
-  ESP_LOGI(TAG, "Retrieving volume: %s%%", vol);
+  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", vol1);
+  ESP_LOGI(TAG, "Retrieving Doorbell 1 volume: %sdB", vol1);
+}
+
+static void handle_conf_get_volume2(struct mg_connection *c,
+                                    struct mg_http_message *hm) {
+
+  // return the volume
+  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", vol2);
+  ESP_LOGI(TAG, "Retrieving Doorbell 2 volume: %sdB", vol2);
 }
 
 static void handle_conf_set(struct mg_connection *c,
@@ -159,20 +208,34 @@ static void handle_conf_set(struct mg_connection *c,
   char file[64], vstr[5];
 
   // see if we are setting the tune file or the volume
-  if (mg_http_get_var(&hm->query, "file", file, sizeof(file)) > 0) {
-    ESP_LOGI(TAG, "Updating tune to play: %s", file);
-    strcpy(tune, file);
-    FILE *fp = fopen(MOUNT_POINT "/conf/filename.txt", "w");
+  if (mg_http_get_var(&hm->query, "file1", file, sizeof(file)) > 0) {
+    ESP_LOGI(TAG, "Updating Doorbell 1 tune to: %s", file);
+    strcpy(tune1, file);
+    FILE *fp = fopen(MOUNT_POINT "/conf/filename1.txt", "w");
     fprintf(fp, "%s", file);
     fclose(fp);
-  } else if (mg_http_get_var(&hm->query, "volume", vstr, sizeof(vstr)) > 0) {
-    ESP_LOGI(TAG, "Updating volume to: %s%%", vstr);
-    strcpy(vol, vstr);
-    FILE *fp = fopen(MOUNT_POINT "/conf/volume.txt", "w");
+  } else if (mg_http_get_var(&hm->query, "file2", file, sizeof(file)) > 0) {
+    ESP_LOGI(TAG, "Updating Doorbell 2 tune to: %s", file);
+    strcpy(tune2, file);
+    FILE *fp = fopen(MOUNT_POINT "/conf/filename2.txt", "w");
+    fprintf(fp, "%s", file);
+    fclose(fp);
+  } else if (mg_http_get_var(&hm->query, "volume1", vstr, sizeof(vstr)) > 0) {
+    ESP_LOGI(TAG, "Updating Doorbell 1 volume to: %sdB", vstr);
+    strcpy(vol1, vstr);
+    FILE *fp = fopen(MOUNT_POINT "/conf/volume1.txt", "w");
     fprintf(fp, "%s", vstr);
     fclose(fp);
     char *ptr;
-    volume = (float)(strtoimax(vstr, &ptr, 10) / 100.);
+    volume1 = (float)pow(10, atof(vstr) / 20.);
+  } else if (mg_http_get_var(&hm->query, "volume2", vstr, sizeof(vstr)) > 0) {
+    ESP_LOGI(TAG, "Updating Doorbell 2 volume to: %sdB", vstr);
+    strcpy(vol2, vstr);
+    FILE *fp = fopen(MOUNT_POINT "/conf/volume2.txt", "w");
+    fprintf(fp, "%s", vstr);
+    fclose(fp);
+    char *ptr;
+    volume2 = (float)pow(10, atof(vstr) / 20.);
   }
   mg_http_reply(c, 200, NULL, "");
 }
@@ -257,10 +320,14 @@ void cb(struct mg_connection *c, int ev, void *ev_data) {
     } else if (mg_http_match_uri(hm, "/list")) {
       // return list of files in /tunes folder
       handle_list(c);
-    } else if (mg_http_match_uri(hm, "/conf/get/file")) {
-      handle_conf_get_file(c, hm);
-    } else if (mg_http_match_uri(hm, "/conf/get/volume")) {
-      handle_conf_get_volume(c, hm);
+    } else if (mg_http_match_uri(hm, "/conf/get/file1")) {
+      handle_conf_get_file1(c, hm);
+    } else if (mg_http_match_uri(hm, "/conf/get/file2")) {
+      handle_conf_get_file2(c, hm);
+    } else if (mg_http_match_uri(hm, "/conf/get/volume1")) {
+      handle_conf_get_volume1(c, hm);
+    } else if (mg_http_match_uri(hm, "/conf/get/volume2")) {
+      handle_conf_get_volume2(c, hm);
     } else if (mg_http_match_uri(hm, "/conf/set")) {
       handle_conf_set(c, hm);
     } else if (mg_http_match_uri(hm, "/firmware/upload")) {

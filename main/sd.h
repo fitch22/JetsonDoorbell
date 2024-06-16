@@ -3,7 +3,7 @@
 #define MOUNT_POINT "/sdcard"
 
 esp_err_t sd_setup(void);
-esp_err_t open_file(const char *filename);
+esp_err_t open_file(const char *filename, uint16_t doorbell);
 
 typedef struct {
   char id[4];     // RIFF

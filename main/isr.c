@@ -18,7 +18,12 @@ bool i2s_write_callback(i2s_chan_handle_t handle, i2s_event_data_t *event,
   return true;
 }
 
-void button_isr_handler(void *arg) {
-  vTaskNotifyGiveFromISR(xButtonTask, NULL);
-  gpio_intr_disable(BUTTON_PIN);
+void button1_isr_handler(void *arg) {
+  vTaskNotifyGiveFromISR(xButton1Task, NULL);
+  gpio_intr_disable(BUTTON1_PIN);
+}
+
+void button2_isr_handler(void *arg) {
+  vTaskNotifyGiveFromISR(xButton2Task, NULL);
+  gpio_intr_disable(BUTTON2_PIN);
 }
