@@ -160,7 +160,7 @@ static void handle_list(struct mg_connection *c) {
         strcat(names, ",");
         strcat(names, fno.fname);
       }
-      ESP_LOGI(TAG, "%10llu %s\n", fno.fsize, fno.fname);
+      ESP_LOGI(TAG, "%10lu %s\n", fno.fsize, fno.fname);
     }
     f_closedir(&dir);
     ESP_LOGI(TAG, "%d files.\n", nfile);
