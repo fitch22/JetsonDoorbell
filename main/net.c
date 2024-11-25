@@ -127,9 +127,10 @@ static void handle_play(struct mg_connection *c, struct mg_http_message *hm) {
   mg_http_get_var(&hm->query, "name", name, sizeof(name));
   mg_http_get_var(&hm->query, "vol", vol, sizeof(vol));
   mg_snprintf(path, sizeof(path), MOUNT_POINT "/tunes/%s", name);
+
   if (name[0] == '\0') {
     mg_http_reply(c, 400, "", "%s", "name required");
-  } else if (!mg_path_is_sane(path)) {
+  } else if (!mg_path_is_sane(mg_str(path))) {
     mg_http_reply(c, 400, "", "%s", "invalid path");
   } else {
     mg_http_reply(c, 200, NULL, "");
@@ -263,7 +264,7 @@ static void handle_firmware_upload(struct mg_connection *c,
               esp_ota_begin(p, tot, &handle) != ESP_OK)) {
     mg_http_reply(c, 500, "", "esp_ota_begin(%ld) failed\n", tot);
   } else if (data.len > 0 &&
-             esp_ota_write(handle, data.ptr, data.len) != ESP_OK) {
+             esp_ota_write(handle, data.buf, data.len) != ESP_OK) {
     mg_http_reply(c, 500, "", "esp_ota_write(%lu) @%ld failed\n", data.len,
                   ofs);
     esp_ota_abort(handle);
@@ -313,26 +314,26 @@ static void handle_firmware_info(struct mg_connection *c) {
 void cb(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *)ev_data;
-    if (mg_http_match_uri(hm, "/upload")) {
+    if (mg_match(hm->uri, mg_str("/upload"), NULL)) {
       handle_upload(c, hm);
-    } else if (mg_http_match_uri(hm, "/play")) {
+    } else if (mg_match(hm->uri, mg_str("/play"), NULL)) {
       handle_play(c, hm);
-    } else if (mg_http_match_uri(hm, "/list")) {
+    } else if (mg_match(hm->uri, mg_str("/list"), NULL)) {
       // return list of files in /tunes folder
       handle_list(c);
-    } else if (mg_http_match_uri(hm, "/conf/get/file1")) {
+    } else if (mg_match(hm->uri, mg_str("/conf/get/file1"), NULL)) {
       handle_conf_get_file1(c, hm);
-    } else if (mg_http_match_uri(hm, "/conf/get/file2")) {
+    } else if (mg_match(hm->uri, mg_str("/conf/get/file2"), NULL)) {
       handle_conf_get_file2(c, hm);
-    } else if (mg_http_match_uri(hm, "/conf/get/volume1")) {
+    } else if (mg_match(hm->uri, mg_str("/conf/get/volume1"), NULL)) {
       handle_conf_get_volume1(c, hm);
-    } else if (mg_http_match_uri(hm, "/conf/get/volume2")) {
+    } else if (mg_match(hm->uri, mg_str("/conf/get/volume2"), NULL)) {
       handle_conf_get_volume2(c, hm);
-    } else if (mg_http_match_uri(hm, "/conf/set")) {
+    } else if (mg_match(hm->uri, mg_str("/conf/set"), NULL)) {
       handle_conf_set(c, hm);
-    } else if (mg_http_match_uri(hm, "/firmware/upload")) {
+    } else if (mg_match(hm->uri, mg_str("/firmware/upload"), NULL)) {
       handle_firmware_upload(c, hm);
-    } else if (mg_http_match_uri(hm, "/firmware/info")) {
+    } else if (mg_match(hm->uri, mg_str("/firmware/info"), NULL)) {
       handle_firmware_info(c);
     } else {
       struct mg_http_serve_opts opts = {.root_dir = "/web_root",
