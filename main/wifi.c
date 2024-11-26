@@ -36,15 +36,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     esp_wifi_connect();
     s_retry_num++;
     MG_INFO(("WIFI Disconnected, retry no. %d", s_retry_num));
-    // if (s_retry_num < 3) {
-    //   esp_wifi_connect();
-    //   s_retry_num++;
-    //   //      MG_INFO(("retry to connect to the AP"));
-    //   MG_INFO(("WIFI Disconnected, retry %d", s_retry_num));
-    // } else {
-    //   xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-    // }
-    // MG_ERROR(("connect to the AP fail"));
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     MG_INFO(("WIFI connected after %d retries", s_retry_num));

@@ -891,7 +891,7 @@ static int ff_stat(const char *path, size_t *size, time_t *mtime) {
 
 static void ff_list(const char *dir, void (*fn)(const char *, void *),
                     void *userdata) {
-  DIR d;
+  FF_DIR d;
   FILINFO fi;
   if (f_opendir(&d, dir) == FR_OK) {
     while (f_readdir(&d, &fi) == FR_OK && fi.fname[0] != '\0') {

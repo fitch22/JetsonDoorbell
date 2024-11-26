@@ -40,7 +40,6 @@ esp_err_t restore_conf(void) {
     if (tmp[0] != '\0') {
       ESP_LOGI(TAG, "Restoring Doorbell 1 volume: %sdB", tmp);
       strcpy(vol1, tmp);
-      char *ptr;
       volume1 = (float)pow(10, atof(tmp) / 20.);
     }
     fclose(fp);
@@ -55,7 +54,6 @@ esp_err_t restore_conf(void) {
     if (tmp[0] != '\0') {
       ESP_LOGI(TAG, "Restoring Doorbell 2 volume: %sdB", tmp);
       strcpy(vol2, tmp);
-      char *ptr;
       volume2 = (float)pow(10, atof(tmp) / 20.);
     }
     fclose(fp);
@@ -227,7 +225,6 @@ static void handle_conf_set(struct mg_connection *c,
     FILE *fp = fopen(MOUNT_POINT "/conf/volume1.txt", "w");
     fprintf(fp, "%s", vstr);
     fclose(fp);
-    char *ptr;
     volume1 = (float)pow(10, atof(vstr) / 20.);
   } else if (mg_http_get_var(&hm->query, "volume2", vstr, sizeof(vstr)) > 0) {
     ESP_LOGI(TAG, "Updating Doorbell 2 volume to: %sdB", vstr);
@@ -235,7 +232,6 @@ static void handle_conf_set(struct mg_connection *c,
     FILE *fp = fopen(MOUNT_POINT "/conf/volume2.txt", "w");
     fprintf(fp, "%s", vstr);
     fclose(fp);
-    char *ptr;
     volume2 = (float)pow(10, atof(vstr) / 20.);
   }
   mg_http_reply(c, 200, NULL, "");
