@@ -74,7 +74,9 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
       IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
 
-  wifi_config_t c = {.sta = {.threshold = {.authmode = WIFI_AUTH_WPA2_PSK},
+  wifi_config_t c = {.sta = {.scan_method = WIFI_ALL_CHANNEL_SCAN,
+                             .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+                             .threshold = {.authmode = WIFI_AUTH_WPA2_PSK},
                              .pmf_cfg = {.capable = true, .required = false}}};
   snprintf((char *)c.sta.ssid, sizeof(c.sta.ssid), "%s", ssid);
   snprintf((char *)c.sta.password, sizeof(c.sta.password), "%s", pass);
