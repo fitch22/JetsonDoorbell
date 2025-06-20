@@ -29,13 +29,24 @@ static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
-  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-    esp_wifi_connect();
-  } else if (event_base == WIFI_EVENT &&
-             event_id == WIFI_EVENT_STA_DISCONNECTED) {
-    esp_wifi_connect();
-    s_retry_num++;
-    MG_INFO(("WIFI Disconnected, retry no. %d", s_retry_num));
+  if (event_base == WIFI_EVENT) {
+    if (event_id == WIFI_EVENT_STA_START) {
+      MG_INFO(("WIFI Started"));
+      esp_wifi_connect();
+    } else if (event_id == WIFI_EVENT_STA_CONNECTED) {
+      MG_INFO(("WIFI Connected with %d retries", s_retry_num));
+    } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+      MG_INFO(("WIFI Disconnected"));
+      esp_err_t ret = esp_wifi_connect();
+      s_retry_num++;
+      if (ret != ESP_OK) {
+        MG_INFO(("WIFI Reconnect: esp_wifi_connect() returned %d", ret));
+      }
+    } else if (event_id == WIFI_EVENT_HOME_CHANNEL_CHANGE) {
+      MG_INFO(("WIFI Channel Change"));
+    } else {
+      MG_INFO(("unexpected WIFI_EVENT %d", event_id));
+    }
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     MG_INFO(("WIFI connected after %d retries", s_retry_num));
@@ -43,6 +54,22 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     s_retry_num = 0;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   }
+
+  /*   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+      esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT &&
+               event_id == WIFI_EVENT_STA_DISCONNECTED) {
+      esp_wifi_connect();
+      s_retry_num++;
+      MG_INFO(("WIFI Disconnected, retry no. %d", s_retry_num));
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+      ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+      MG_INFO(("WIFI connected after %d retries", s_retry_num));
+      MG_INFO(("IP ADDRESS:" IPSTR, IP2STR(&event->ip_info.ip)));
+      s_retry_num = 0;
+      xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+   */
 }
 
 esp_err_t wifi_init(const char *ssid, const char *pass) {
@@ -66,6 +93,7 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+  esp_wifi_set_ps(WIFI_PS_NONE); // turn off power saving
 
   esp_event_handler_instance_t instance_any_id;
   esp_event_handler_instance_t instance_got_ip;
@@ -77,7 +105,11 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
   wifi_config_t c = {.sta = {.scan_method = WIFI_ALL_CHANNEL_SCAN,
                              .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
                              .threshold = {.authmode = WIFI_AUTH_WPA2_PSK},
-                             .pmf_cfg = {.capable = true, .required = false}}};
+                             .pmf_cfg = {.capable = true, .required = false},
+                             .rm_enabled = 1,
+                             .mbo_enabled = 1,
+                             .ft_enabled = 1,
+                             .failure_retry_cnt = 10}};
   snprintf((char *)c.sta.ssid, sizeof(c.sta.ssid), "%s", ssid);
   snprintf((char *)c.sta.password, sizeof(c.sta.password), "%s", pass);
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
