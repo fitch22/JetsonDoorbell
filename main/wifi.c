@@ -25,32 +25,44 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
+static const char *TAG = "wifi station";
 static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
   if (event_base == WIFI_EVENT) {
     if (event_id == WIFI_EVENT_STA_START) {
-      MG_INFO(("WIFI Started"));
+      ESP_LOGI(TAG, "WIFI Started");
       esp_wifi_connect();
     } else if (event_id == WIFI_EVENT_STA_CONNECTED) {
-      MG_INFO(("WIFI Connected with %d retries", s_retry_num));
+      ESP_LOGI(TAG, "WIFI Connected after %d retries", s_retry_num);
     } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-      MG_INFO(("WIFI Disconnected"));
-      esp_err_t ret = esp_wifi_connect();
-      s_retry_num++;
-      if (ret != ESP_OK) {
-        MG_INFO(("WIFI Reconnect: esp_wifi_connect() returned %d", ret));
+      wifi_event_sta_disconnected_t *disconn = event_data;
+      ESP_LOGI(TAG, "WIFI Disconnected with reason %d", disconn->reason);
+      // Until we are connected for the first time, try to connect a limited
+      // number of times.  After we have connected successfully, any disconnect
+      // will try to reconnect indefinitely.
+      if ((s_retry_num < 10) ||
+          (WIFI_CONNECTED_BIT & xEventGroupGetBits(s_wifi_event_group))) {
+        esp_err_t ret = esp_wifi_connect();
+        s_retry_num++;
+        if (ret == ESP_OK) {
+          ESP_LOGI(TAG, "WIFI Reconnect successful");
+        } else {
+          ESP_LOGI(TAG, "WIFI Reconnect: esp_wifi_connect() returned %d", ret);
+        }
+      } else {
+        xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+        ESP_LOGI(TAG, "WIFI connect to AP fail");
       }
     } else if (event_id == WIFI_EVENT_HOME_CHANNEL_CHANGE) {
-      MG_INFO(("WIFI Channel Change"));
+      ESP_LOGI(TAG, "WIFI Channel Change");
     } else {
-      MG_INFO(("unexpected WIFI_EVENT %d", event_id));
+      ESP_LOGI(TAG, "unexpected WIFI_EVENT %d", event_id);
     }
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    MG_INFO(("WIFI connected after %d retries", s_retry_num));
-    MG_INFO(("IP ADDRESS:" IPSTR, IP2STR(&event->ip_info.ip)));
+    ESP_LOGI(TAG, "IP ADDRESS:" IPSTR, IP2STR(&event->ip_info.ip));
     s_retry_num = 0;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   }
@@ -97,30 +109,23 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
   snprintf((char *)c.sta.ssid, sizeof(c.sta.ssid), "%s", ssid);
   snprintf((char *)c.sta.password, sizeof(c.sta.password), "%s", pass);
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-  ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &c));
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &c));
   ESP_ERROR_CHECK(esp_wifi_start());
-  MG_DEBUG(("wifi_init_sta finished."));
+  ESP_LOGI(TAG, "wifi_init_sta finished.");
 
   EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                          WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                          pdFALSE, pdFALSE, portMAX_DELAY);
 
   if (bits & WIFI_CONNECTED_BIT) {
-    MG_INFO(("connected to ap SSID:%s password:%s", ssid, pass));
+    ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", ssid, pass);
     ret = ESP_OK;
   } else if (bits & WIFI_FAIL_BIT) {
-    MG_ERROR(("Failed to connect to SSID:%s, password:%s", ssid, pass));
+    ESP_LOGE(TAG, "Failed to connect to SSID:%s, password:%s", ssid, pass);
     ret = ESP_FAIL;
   } else {
-    MG_ERROR(("UNEXPECTED EVENT"));
+    ESP_LOGE(TAG, "UNEXPECTED EVENT");
     ret = ESP_FAIL;
   }
-
-  /* The event will not be processed after unregister */
-  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
-      IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
-      WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-  vEventGroupDelete(s_wifi_event_group);
   return ret;
 }
