@@ -26,7 +26,6 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT BIT1
 
 static const char *TAG = "wifi station";
-static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
@@ -34,36 +33,18 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     if (event_id == WIFI_EVENT_STA_START) {
       ESP_LOGI(TAG, "WIFI Started");
       esp_wifi_connect();
-    } else if (event_id == WIFI_EVENT_STA_CONNECTED) {
-      ESP_LOGI(TAG, "WIFI Connected after %d retries", s_retry_num);
     } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
       wifi_event_sta_disconnected_t *disconn = event_data;
-      ESP_LOGI(TAG, "WIFI Disconnected with reason %d", disconn->reason);
-      // Until we are connected for the first time, try to connect a limited
-      // number of times.  After we have connected successfully, any disconnect
-      // will try to reconnect indefinitely.
-      if ((s_retry_num < 10) ||
-          (WIFI_CONNECTED_BIT & xEventGroupGetBits(s_wifi_event_group))) {
-        esp_err_t ret = esp_wifi_connect();
-        s_retry_num++;
-        if (ret == ESP_OK) {
-          ESP_LOGI(TAG, "WIFI Reconnect successful");
-        } else {
-          ESP_LOGI(TAG, "WIFI Reconnect: esp_wifi_connect() returned %d", ret);
-        }
+      if (disconn->reason == WIFI_REASON_ROAMING) {
+        ESP_LOGI(TAG, "station disconnected during roaming");
       } else {
+        ESP_LOGI(TAG, "WIFI Disconnected with reason %d", disconn->reason);
         xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        ESP_LOGI(TAG, "WIFI connect to AP fail");
       }
-    } else if (event_id == WIFI_EVENT_HOME_CHANNEL_CHANGE) {
-      ESP_LOGI(TAG, "WIFI Channel Change");
-    } else {
-      ESP_LOGI(TAG, "unexpected WIFI_EVENT %d", event_id);
     }
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     ESP_LOGI(TAG, "IP ADDRESS:" IPSTR, IP2STR(&event->ip_info.ip));
-    s_retry_num = 0;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   }
 }

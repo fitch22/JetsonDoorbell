@@ -1,5 +1,10 @@
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "driver/gpio.h"
 #include "error_blink.h"
+#include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "global.h"
@@ -11,9 +16,6 @@
 #include "sdkconfig.h"
 #include "task.h"
 #include "wifi.h"
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 extern SemaphoreHandle_t xPlay;
 
