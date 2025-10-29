@@ -104,8 +104,7 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
                              .pmf_cfg = {.capable = true, .required = false},
                              .rm_enabled = 1,
                              .mbo_enabled = 1,
-                             .ft_enabled = 1,
-                             .failure_retry_cnt = 10}};
+                             .ft_enabled = 1}};
   snprintf((char *)c.sta.ssid, sizeof(c.sta.ssid), "%s", ssid);
   snprintf((char *)c.sta.password, sizeof(c.sta.password), "%s", pass);
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
