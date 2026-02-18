@@ -1,6 +1,6 @@
 "use strict";
 
-var f; // filename
+let f; // filename
 
 const fw_file = document.getElementById("fw_file"); // input (hidden)
 const fw_select = document.getElementById("fw_select"); // file select button
@@ -8,11 +8,11 @@ const fw_upload = document.getElementById("fw_upload"); // upload button
 const filename = document.getElementById("filename"); // filename
 
 // Helper function to display upload status
-var setStatus = function (text) {
+const setStatus = function (text) {
   document.getElementById("filename").innerText = text;
 };
 
-var setProgress = function (value) {
+const setProgress = function (value) {
   document.getElementById("progressBar").value = value;
 };
 
@@ -33,7 +33,7 @@ fw_upload.addEventListener("click", function (event) {
   event.preventDefault();
   if (f) {
     console.log("Upload button pushed, attempting to upload file: ", f.name);
-    var r = new FileReader();
+    const r = new FileReader();
     r.readAsArrayBuffer(f);
     r.onload = function () {
       event.target.value = "";
@@ -47,29 +47,24 @@ fw_file.onchange = function (e) {
   if (!e.target.files[0]) return;
   f = e.target.files[0];
   filename.innerText = f.name;
+  fw_upload.disabled = false;
   console.log("Selected file: ", f.name);
-  //  };
 };
 
-// up_btn.onclick = function (ev) {
-//   up_btn.console.log("Upload button pushed");
-//   //uploadMe.click();
-// };
-
 // Send a large blob of data chunk by chunk
-var sendFileData = function (name, data, chunkSize) {
-  var done = false;
-  var sendChunk = function (offset) {
-    var chunk = data.subarray(offset, offset + chunkSize) || "";
-    var opts = { method: "POST", body: chunk };
-    var url =
+const sendFileData = function (name, data, chunkSize) {
+  let done = false;
+  const sendChunk = function (offset) {
+    const chunk = data.subarray(offset, offset + chunkSize) || "";
+    const opts = { method: "POST", body: chunk };
+    const url =
       "/firmware/upload?offset=" +
       offset +
       "&total=" +
       data.length +
       "&name=" +
       encodeURIComponent(name);
-    var ok;
+    let ok;
     setStatus(
       "Uploading " +
         name +
@@ -106,11 +101,11 @@ var sendFileData = function (name, data, chunkSize) {
   sendChunk(0);
 };
 
-var getFirmwareInfo = function () {
+const getFirmwareInfo = function () {
   fetch("/firmware/info")
     .then((res) => res.text())
     .then((text) => {
-      var info = text.split(",");
+      const info = text.split(",");
       document.getElementById("project").innerText = info[0];
       document.getElementById("datetime").innerText = info[1];
       document.getElementById("version").innerText = info[2];

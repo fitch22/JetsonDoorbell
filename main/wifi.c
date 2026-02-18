@@ -116,10 +116,10 @@ esp_err_t wifi_init(const char *ssid, const char *pass) {
                                          pdFALSE, pdFALSE, portMAX_DELAY);
 
   if (bits & WIFI_CONNECTED_BIT) {
-    ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", ssid, pass);
+    ESP_LOGI(TAG, "connected to ap SSID:%s", ssid);
     ret = ESP_OK;
   } else if (bits & WIFI_FAIL_BIT) {
-    ESP_LOGE(TAG, "Failed to connect to SSID:%s, password:%s", ssid, pass);
+    ESP_LOGE(TAG, "Failed to connect to SSID:%s", ssid);
     ret = ESP_FAIL;
   } else {
     ESP_LOGE(TAG, "UNEXPECTED EVENT");

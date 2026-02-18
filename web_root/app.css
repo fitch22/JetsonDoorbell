@@ -41,32 +41,20 @@
   justify-content: flex-start;
   align-items: center;
 }
-#controls {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-  align-items: baseline;
-}
-#selectdiv {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-#volumediv {
-  display: flex;
-  flex-direction: column;
-}
+#controls,
 #controls2 {
   display: flex;
   flex-direction: row;
   justify-content: space-around;
   align-items: baseline;
 }
+#selectdiv,
 #selectdiv2 {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
 }
+#volumediv,
 #volumediv2 {
   display: flex;
   flex-direction: column;

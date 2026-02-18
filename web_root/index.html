@@ -13,9 +13,6 @@
       <div id="info">
         <div id="title">
           <h1>Choose Doorbell Tunes</h1>
-          <!-- <p>
-            Currently selected tune file is: <span id="wavfile">(none)</span>.
-          </p> -->
         </div>
         <div id="controls">
           <div id="selectdiv">
@@ -28,7 +25,7 @@
             </form>
           </div>
           <div id="volumediv">
-            <label for="range">Doorbell 1 Volume</label>
+            <label for="range">Volume: <output id="vol1_out">0</output> dB</label>
             <input
               id="range"
               type="range"
@@ -60,7 +57,7 @@
             </form>
           </div>
           <div id="volumediv2">
-            <label for="range2">Doorbell 2 Volume</label>
+            <label for="range2">Volume: <output id="vol2_out">0</output> dB</label>
             <input
               id="range2"
               type="range"
@@ -79,6 +76,7 @@
             </datalist>
           </div>
         </div>
+        <p id="save_status" style="visibility:hidden; color:green; text-align:center; margin:0">&#x2713; Saved</p>
       </div>
       <div id="wrapper">
         <div id="h2div">
@@ -88,13 +86,13 @@
         <button id="upload_button">Select file...</button>
         <span id="el3">No file chosen</span>
         <div>
-          <progress id="progressBar" value="0">Half Way</progress>
+          <progress id="progressBar" value="0" max="1"></progress>
         </div>
       </div>
       <div id="fw">
         <p><a href="fw.html">Firmware</a></p>
       </div>
     </div>
+    <script src="app.js"></script>
   </body>
-  <script src="app.js"></script>
 </html>

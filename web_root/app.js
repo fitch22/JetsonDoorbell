@@ -1,26 +1,26 @@
 "use strict";
 
 // Helper function to display upload status
-var setStatus = function (text) {
+const setStatus = function (text) {
   document.getElementById("el3").innerText = text;
 };
 
-var setProgress = function (value) {
+const setProgress = function (value) {
   document.getElementById("progressBar").value = value;
 };
 
 // When user clicks on a button, trigger file selection dialog
-var up_btn = document.getElementById("upload_button");
+const up_btn = document.getElementById("upload_button");
 up_btn.onclick = function (ev) {
   input.click();
 };
 
-var form = document.getElementById("play");
+const form = document.getElementById("play");
 form.addEventListener("submit", playSound);
-var playDone = true;
+let playDone = true;
 
 async function playSound(event) {
-  var url = "/play?name=" + filename1 + "&vol=1";
+  const url = "/play?name=" + filename1 + "&vol=1";
   event.preventDefault();
   if (playDone) {
     playDone = false;
@@ -30,12 +30,12 @@ async function playSound(event) {
   }
 }
 
-var form2 = document.getElementById("play2");
+const form2 = document.getElementById("play2");
 form2.addEventListener("submit", playSound2);
-var playDone2 = true;
+let playDone2 = true;
 
 async function playSound2(event) {
-  var url = "/play?name=" + filename2 + "&vol=2";
+  const url = "/play?name=" + filename2 + "&vol=2";
   event.preventDefault();
   if (playDone2) {
     playDone2 = false;
@@ -52,19 +52,17 @@ function removeAll(selectBox) {
 }
 
 function addNameToSelect(name) {
-  removeAll(fileSelect);
   listFiles();
-  getDefaultFile();
 }
 
 // Send a large blob of data chunk by chunk
-var sendFileData = function (name, data, chunkSize) {
-  var done = false;
-  var sendChunk = function (offset) {
-    var chunk = data.subarray(offset, offset + chunkSize) || "";
-    var opts = { method: "POST", body: chunk };
-    var url = "/upload?offset=" + offset + "&file=" + encodeURIComponent(name);
-    var ok;
+const sendFileData = function (name, data, chunkSize) {
+  let done = false;
+  const sendChunk = function (offset) {
+    const chunk = data.subarray(offset, offset + chunkSize) || "";
+    const opts = { method: "POST", body: chunk };
+    const url = "/upload?offset=" + offset + "&file=" + encodeURIComponent(name);
+    let ok;
     setStatus(
       "Uploading " +
         name +
@@ -101,14 +99,14 @@ var sendFileData = function (name, data, chunkSize) {
   sendChunk(0);
 };
 
-var f = "jetson.wav";
+let f = "jetson.wav";
 
 // If user selected a file, read it into memory and trigger sendFileData()
-var input = document.getElementById("doorbell_file");
+const input = document.getElementById("doorbell_file");
 input.onchange = function (ev) {
   if (!ev.target.files[0]) return;
   f = ev.target.files[0];
-  var r = new FileReader();
+  const r = new FileReader();
   r.readAsArrayBuffer(f);
   r.onload = function () {
     ev.target.value = "";
@@ -117,20 +115,20 @@ input.onchange = function (ev) {
 };
 
 const defaultFilename = "jetson.wav";
-var filename1 = defaultFilename;
-var filename2 = defaultFilename;
-var fileSelect = document.getElementById("select");
-var fileSelect2 = document.getElementById("select2");
-//var wavfile = document.getElementById("wavfile");
-var volume = "-20";
-var volume2 = "-20";
+let filename1 = defaultFilename;
+let filename2 = defaultFilename;
+const fileSelect = document.getElementById("select");
+const fileSelect2 = document.getElementById("select2");
+let volume = "-20";
+let volume2 = "-20";
 
-var listFiles = function () {
+const listFiles = function () {
   fetch("/list")
     .then((res) => res.text())
     .then((text) => {
-      //var names = ["bob", "nancy", "tom"]; //text.split(",").sort(compareFn);
-      var names = text.split(",").sort(compareFn);
+      removeAll(fileSelect);
+      removeAll(fileSelect2);
+      const names = text.split(",").sort(compareFn);
       for (let i = 0; i < names.length; i++) {
         let opt = document.createElement("option");
         opt.value = names[i];
@@ -155,38 +153,50 @@ function compareFn(a, b) {
   } else return 0;
 }
 
+function flashSaved() {
+  const el = document.getElementById("save_status");
+  el.style.visibility = "visible";
+  setTimeout(() => { el.style.visibility = "hidden"; }, 1500);
+}
+
 fileSelect.addEventListener("change", (event) => {
   filename1 = event.target.value;
   console.log(`Changed Doorbell 1 tune to ${filename1}`);
-  var url = "/conf/set?file1=" + filename1;
-  fetch(url).then();
+  const url = "/conf/set?file1=" + filename1;
+  fetch(url).then(() => flashSaved());
 });
 
 fileSelect2.addEventListener("change", (event) => {
   filename2 = event.target.value;
   console.log(`Changed Doorbell 2 tune to ${filename2}`);
-  var url = "/conf/set?file2=" + filename2;
-  fetch(url).then();
+  const url = "/conf/set?file2=" + filename2;
+  fetch(url).then(() => flashSaved());
 });
 
-var setVolume = document.getElementById("range");
+const setVolume = document.getElementById("range");
 setVolume.addEventListener("change", changeVolume);
+setVolume.addEventListener("input", (e) => {
+  document.getElementById("vol1_out").value = e.target.value;
+});
 
 function changeVolume(event) {
   const newVolume = event.target.value;
   console.log(`Changed Doorbell 1 volume to ${newVolume}dB`);
-  var url = "/conf/set?volume1=" + newVolume;
-  fetch(url).then();
+  const url = "/conf/set?volume1=" + newVolume;
+  fetch(url).then(() => flashSaved());
 }
 
-var setVolume2 = document.getElementById("range2");
+const setVolume2 = document.getElementById("range2");
 setVolume2.addEventListener("change", changeVolume2);
+setVolume2.addEventListener("input", (e) => {
+  document.getElementById("vol2_out").value = e.target.value;
+});
 
 function changeVolume2(event) {
   const newVolume = event.target.value;
   console.log(`Changed Doorbell 2 volume to ${newVolume}dB`);
-  var url = "/conf/set?volume2=" + newVolume;
-  fetch(url).then();
+  const url = "/conf/set?volume2=" + newVolume;
+  fetch(url).then(() => flashSaved());
 }
 
 const getDefaultFile = function () {
@@ -194,14 +204,12 @@ const getDefaultFile = function () {
     .then((res) => res.text())
     .then((text) => {
       console.log("Retrieved Doorbell 1 tune: ", text);
-      //wavfile.textContent = filename = text;
       fileSelect.value = filename1 = text;
     });
   fetch("/conf/get/file2")
     .then((res) => res.text())
     .then((text) => {
       console.log("Retrieved Doorbell 2 tune: ", text);
-      //wavfile.textContent = filename = text;
       fileSelect2.value = filename2 = text;
     });
 };
@@ -212,12 +220,14 @@ const getVolume = function () {
     .then((text) => {
       console.log("Retrieved Doorbell 1 Volume: ", text, "dB");
       setVolume.value = volume = text;
+      document.getElementById("vol1_out").value = text;
     });
   fetch("/conf/get/volume2")
     .then((res) => res.text())
     .then((text) => {
       console.log("Retrieved Doorbell 2 Volume: ", text, "dB");
       setVolume2.value = volume2 = text;
+      document.getElementById("vol2_out").value = text;
     });
 };
 
