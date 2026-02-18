@@ -5,7 +5,6 @@
 #include "global.h"
 #include "gpio.h"
 #include "i2s.h"
-#include "mongoose.h"
 #include "net.h"
 #include "sd.h"
 #include "sdkconfig.h"
@@ -42,15 +41,7 @@ void app_main(void) {
   if (wifi_init(wifi_ssid, wifi_pass) != ESP_OK)
     error_blink(3);
 
-  // Connected to WiFi, now start HTTP server
-  struct mg_mgr mgr;
-  mg_log_set(MG_LL_DEBUG); // Set log level
-  mg_mgr_init(&mgr);
-  MG_INFO(("Mongoose version : v%s", MG_VERSION));
-  MG_INFO(("Listening on     : %s", HTTP_URL));
-
-  mg_http_listen(&mgr, HTTP_URL, cb, NULL);
-
-  for (;;)
-    mg_mgr_poll(&mgr, 1000); // Infinite event loop
+  if (start_webserver() != ESP_OK)
+    error_blink(4);
+  // app_main can return; httpd and all tasks continue running
 }

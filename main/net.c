@@ -1,10 +1,16 @@
 #include "net.h"
+#include "esp_http_server.h"
+#include "esp_log.h"
 #include "esp_ota_ops.h"
+#include "esp_system.h"
 #include "esp_vfs_fat.h"
 #include "global.h"
 #include "sd.h"
 #include "tag.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 esp_err_t restore_conf(void) {
   char tmp[64];
@@ -115,31 +121,78 @@ esp_err_t restore_conf(void) {
   return ESP_OK;
 }
 
-// Handlers for various endpoints
-static void handle_upload(struct mg_connection *c, struct mg_http_message *hm) {
-  mg_http_upload(c, hm, &mg_fs_fat, "/tunes", 9999999);
+// ---------------------------------------------------------------------------
+// Embedded web file symbols
+// ---------------------------------------------------------------------------
+extern const uint8_t index_html_start[]     asm("_binary_index_html_start");
+extern const uint8_t index_html_end[]       asm("_binary_index_html_end");
+extern const uint8_t fw_html_start[]        asm("_binary_fw_html_start");
+extern const uint8_t fw_html_end[]          asm("_binary_fw_html_end");
+extern const uint8_t app_js_start[]         asm("_binary_app_js_start");
+extern const uint8_t app_js_end[]           asm("_binary_app_js_end");
+extern const uint8_t fw_js_start[]          asm("_binary_fw_js_start");
+extern const uint8_t fw_js_end[]            asm("_binary_fw_js_end");
+extern const uint8_t app_css_start[]        asm("_binary_app_css_start");
+extern const uint8_t app_css_end[]          asm("_binary_app_css_end");
+extern const uint8_t favicon_ico_start[]    asm("_binary_favicon_ico_start");
+extern const uint8_t favicon_ico_end[]      asm("_binary_favicon_ico_end");
+extern const uint8_t background_jpg_start[] asm("_binary_background_jpg_start");
+extern const uint8_t background_jpg_end[]   asm("_binary_background_jpg_end");
+
+// ---------------------------------------------------------------------------
+// Static file handlers
+// ---------------------------------------------------------------------------
+static esp_err_t handle_index(httpd_req_t *req) {
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_send(req, (const char *)index_html_start,
+                  index_html_end - index_html_start);
+  return ESP_OK;
 }
 
-static void handle_play(struct mg_connection *c, struct mg_http_message *hm) {
-  char path[80], name[64], vol[5];
-  mg_http_get_var(&hm->query, "name", name, sizeof(name));
-  mg_http_get_var(&hm->query, "vol", vol, sizeof(vol));
-  mg_snprintf(path, sizeof(path), MOUNT_POINT "/tunes/%s", name);
-
-  if (name[0] == '\0') {
-    mg_http_reply(c, 400, "", "%s", "name required");
-  } else if (!mg_path_is_sane(mg_str(path))) {
-    mg_http_reply(c, 400, "", "%s", "invalid path");
-  } else {
-    mg_http_reply(c, 200, NULL, "");
-    if (xSemaphoreTake(xPlay, 30000 / portTICK_PERIOD_MS)) {
-      ESP_LOGI(TAG, "Playing tune %s from browser, volume = %s", name, vol);
-      open_file(path, atoi(vol));
-    }
-  }
+static esp_err_t handle_fw_html(httpd_req_t *req) {
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_send(req, (const char *)fw_html_start,
+                  fw_html_end - fw_html_start);
+  return ESP_OK;
 }
 
-static void handle_list(struct mg_connection *c) {
+static esp_err_t handle_app_js(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/javascript");
+  httpd_resp_send(req, (const char *)app_js_start, app_js_end - app_js_start);
+  return ESP_OK;
+}
+
+static esp_err_t handle_fw_js(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/javascript");
+  httpd_resp_send(req, (const char *)fw_js_start, fw_js_end - fw_js_start);
+  return ESP_OK;
+}
+
+static esp_err_t handle_app_css(httpd_req_t *req) {
+  httpd_resp_set_type(req, "text/css");
+  httpd_resp_send(req, (const char *)app_css_start,
+                  app_css_end - app_css_start);
+  return ESP_OK;
+}
+
+static esp_err_t handle_favicon(httpd_req_t *req) {
+  httpd_resp_set_type(req, "image/x-icon");
+  httpd_resp_send(req, (const char *)favicon_ico_start,
+                  favicon_ico_end - favicon_ico_start);
+  return ESP_OK;
+}
+
+static esp_err_t handle_background(httpd_req_t *req) {
+  httpd_resp_set_type(req, "image/jpeg");
+  httpd_resp_send(req, (const char *)background_jpg_start,
+                  background_jpg_end - background_jpg_start);
+  return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// API handlers
+// ---------------------------------------------------------------------------
+static esp_err_t handle_list(httpd_req_t *req) {
   FRESULT res;
   FF_DIR dir;
   FILINFO fno;
@@ -147,12 +200,12 @@ static void handle_list(struct mg_connection *c) {
   static char names[512];
 
   names[0] = '\0';
-  res = f_opendir(&dir, "/tunes"); /* Open the directory */
+  res = f_opendir(&dir, "/tunes");
   if (res == FR_OK) {
     for (nfile = 0;; nfile++) {
-      res = f_readdir(&dir, &fno); /* Read a directory item */
+      res = f_readdir(&dir, &fno);
       if (res != FR_OK || fno.fname[0] == 0)
-        break; /* Error or end of dir */
+        break;
       if (nfile == 0)
         snprintf(names, sizeof(names), "%s", fno.fname);
       else {
@@ -167,66 +220,97 @@ static void handle_list(struct mg_connection *c) {
   } else {
     ESP_LOGI(TAG, "Failed to open \"%s\". (%u)\n", "/tunes", res);
   }
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", names);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, names, strlen(names));
+  return ESP_OK;
 }
 
-static void handle_conf_get_file1(struct mg_connection *c,
-                                  struct mg_http_message *hm) {
+static esp_err_t handle_play(httpd_req_t *req) {
+  char query[128], name[64], vol[5], path[80];
+  query[0] = name[0] = vol[0] = '\0';
 
-  // return the tune file
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", tune1);
+  httpd_req_get_url_query_str(req, query, sizeof(query));
+  httpd_query_key_value(query, "name", name, sizeof(name));
+  httpd_query_key_value(query, "vol", vol, sizeof(vol));
+
+  if (name[0] == '\0') {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "name required");
+    return ESP_OK;
+  }
+  if (strstr(name, "..")) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid path");
+    return ESP_OK;
+  }
+
+  snprintf(path, sizeof(path), MOUNT_POINT "/tunes/%s", name);
+  httpd_resp_send(req, NULL, 0);
+  if (xSemaphoreTake(xPlay, 30000 / portTICK_PERIOD_MS)) {
+    ESP_LOGI(TAG, "Playing tune %s from browser, volume = %s", name, vol);
+    open_file(path, atoi(vol));
+  }
+  return ESP_OK;
+}
+
+static esp_err_t handle_conf_get_file1(httpd_req_t *req) {
   ESP_LOGI(TAG, "Retrieving Doorbell 1 tune: %s", tune1);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, tune1, strlen(tune1));
+  return ESP_OK;
 }
 
-static void handle_conf_get_file2(struct mg_connection *c,
-                                  struct mg_http_message *hm) {
-
-  // return the tune file
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", tune2);
+static esp_err_t handle_conf_get_file2(httpd_req_t *req) {
   ESP_LOGI(TAG, "Retrieving Doorbell 2 tune: %s", tune2);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, tune2, strlen(tune2));
+  return ESP_OK;
 }
 
-static void handle_conf_get_volume1(struct mg_connection *c,
-                                    struct mg_http_message *hm) {
-
-  // return the volume
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", vol1);
+static esp_err_t handle_conf_get_volume1(httpd_req_t *req) {
   ESP_LOGI(TAG, "Retrieving Doorbell 1 volume: %sdB", vol1);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, vol1, strlen(vol1));
+  return ESP_OK;
 }
 
-static void handle_conf_get_volume2(struct mg_connection *c,
-                                    struct mg_http_message *hm) {
-
-  // return the volume
-  mg_http_reply(c, 200, "Content-Type: text/plain\r\n", vol2);
+static esp_err_t handle_conf_get_volume2(httpd_req_t *req) {
   ESP_LOGI(TAG, "Retrieving Doorbell 2 volume: %sdB", vol2);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, vol2, strlen(vol2));
+  return ESP_OK;
 }
 
-static void handle_conf_set(struct mg_connection *c,
-                            struct mg_http_message *hm) {
-  char file[64], vstr[5];
+static esp_err_t handle_conf_set(httpd_req_t *req) {
+  char query[128], file[64], vstr[5];
+  query[0] = '\0';
 
-  // see if we are setting the tune file or the volume
-  if (mg_http_get_var(&hm->query, "file1", file, sizeof(file)) > 0) {
+  if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK) {
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+  }
+
+  if (httpd_query_key_value(query, "file1", file, sizeof(file)) == ESP_OK) {
     ESP_LOGI(TAG, "Updating Doorbell 1 tune to: %s", file);
     strcpy(tune1, file);
     FILE *fp = fopen(MOUNT_POINT "/conf/filename1.txt", "w");
     fprintf(fp, "%s", file);
     fclose(fp);
-  } else if (mg_http_get_var(&hm->query, "file2", file, sizeof(file)) > 0) {
+  } else if (httpd_query_key_value(query, "file2", file, sizeof(file)) ==
+             ESP_OK) {
     ESP_LOGI(TAG, "Updating Doorbell 2 tune to: %s", file);
     strcpy(tune2, file);
     FILE *fp = fopen(MOUNT_POINT "/conf/filename2.txt", "w");
     fprintf(fp, "%s", file);
     fclose(fp);
-  } else if (mg_http_get_var(&hm->query, "volume1", vstr, sizeof(vstr)) > 0) {
+  } else if (httpd_query_key_value(query, "volume1", vstr, sizeof(vstr)) ==
+             ESP_OK) {
     ESP_LOGI(TAG, "Updating Doorbell 1 volume to: %sdB", vstr);
     strcpy(vol1, vstr);
     FILE *fp = fopen(MOUNT_POINT "/conf/volume1.txt", "w");
     fprintf(fp, "%s", vstr);
     fclose(fp);
     volume1 = (float)pow(10, atof(vstr) / 20.);
-  } else if (mg_http_get_var(&hm->query, "volume2", vstr, sizeof(vstr)) > 0) {
+  } else if (httpd_query_key_value(query, "volume2", vstr, sizeof(vstr)) ==
+             ESP_OK) {
     ESP_LOGI(TAG, "Updating Doorbell 2 volume to: %sdB", vstr);
     strcpy(vol2, vstr);
     FILE *fp = fopen(MOUNT_POINT "/conf/volume2.txt", "w");
@@ -234,53 +318,131 @@ static void handle_conf_set(struct mg_connection *c,
     fclose(fp);
     volume2 = (float)pow(10, atof(vstr) / 20.);
   }
-  mg_http_reply(c, 200, NULL, "");
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
 }
 
-static void handle_firmware_upload(struct mg_connection *c,
-                                   struct mg_http_message *hm) {
-  char name[64], offset[20], total[20];
-  struct mg_str data = hm->body;
-  long ofs = -1, tot = -1;
-  name[0] = offset[0] = '\0';
-  static esp_partition_t *p = NULL;
-  static esp_ota_handle_t handle;
+static esp_err_t handle_upload(httpd_req_t *req) {
+  char query[128], name[64], offset_str[16], path[80];
+  query[0] = name[0] = offset_str[0] = '\0';
 
-  mg_http_get_var(&hm->query, "name", name, sizeof(name));
-  mg_http_get_var(&hm->query, "offset", offset, sizeof(offset));
-  mg_http_get_var(&hm->query, "total", total, sizeof(total));
-  MG_INFO(("File %s, offset %s, len %lu", name, offset, data.len));
+  if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
+      httpd_query_key_value(query, "file", name, sizeof(name)) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "file required");
+    return ESP_OK;
+  }
+  if (strstr(name, "..")) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid path");
+    return ESP_OK;
+  }
 
-  if ((ofs = mg_json_get_long(mg_str(offset), "$", -1)) < 0 ||
-      (tot = mg_json_get_long(mg_str(total), "$", -1)) < 0) {
-    mg_http_reply(c, 500, "", "offset and total not set\n");
-  } else if (ofs == 0 &&
-             ((p = (esp_partition_t *)esp_ota_get_next_update_partition(
-                   NULL)) == NULL ||
-              esp_ota_begin(p, tot, &handle) != ESP_OK)) {
-    mg_http_reply(c, 500, "", "esp_ota_begin(%ld) failed\n", tot);
-  } else if (data.len > 0 &&
-             esp_ota_write(handle, data.buf, data.len) != ESP_OK) {
-    mg_http_reply(c, 500, "", "esp_ota_write(%lu) @%ld failed\n", data.len,
-                  ofs);
-    esp_ota_abort(handle);
-  } else if (data.len == 0 && esp_ota_end(handle) != ESP_OK) {
-    mg_http_reply(c, 500, "", "esp_ota_end() failed\n", tot);
+  snprintf(path, sizeof(path), MOUNT_POINT "/tunes/%s", name);
+  long offset = 0;
+  if (httpd_query_key_value(query, "offset", offset_str,
+                            sizeof(offset_str)) == ESP_OK)
+    offset = atol(offset_str);
+
+  FILE *f;
+  if (offset == 0) {
+    f = fopen(path, "wb");
   } else {
-    mg_http_reply(c, 200, NULL, "");
-    if (data.len == 0) {
-      // Successful esp_ota_end() called, update boot partition and schedule
-      // device reboot
-      esp_ota_set_boot_partition(p);
-      mg_timer_add(c->mgr, 500, 0, (void (*)(void *))esp_restart, NULL);
-      ESP_LOGI(TAG, "Time to reboot!");
+    f = fopen(path, "r+b");
+    if (f)
+      fseek(f, offset, SEEK_SET);
+  }
+  if (!f) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "fopen failed");
+    return ESP_OK;
+  }
+
+  char buf[512];
+  int received;
+  size_t remaining = req->content_len;
+  while (remaining > 0) {
+    size_t to_recv = remaining < sizeof(buf) ? remaining : sizeof(buf);
+    received = httpd_req_recv(req, buf, to_recv);
+    if (received <= 0)
+      break;
+    fwrite(buf, 1, received, f);
+    remaining -= received;
+  }
+  fclose(f);
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
+}
+
+static esp_err_t handle_firmware_upload(httpd_req_t *req) {
+  char query[128], offset_str[16], total_str[20];
+  query[0] = offset_str[0] = total_str[0] = '\0';
+  static esp_partition_t *p = NULL;
+  static esp_ota_handle_t ota_handle;
+
+  if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
+      httpd_query_key_value(query, "offset", offset_str,
+                            sizeof(offset_str)) != ESP_OK ||
+      httpd_query_key_value(query, "total", total_str,
+                            sizeof(total_str)) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                        "offset and total not set\n");
+    return ESP_OK;
+  }
+
+  long ofs = atol(offset_str);
+  long tot = atol(total_str);
+  ESP_LOGI(TAG, "OTA offset %ld, total %ld, content_len %d", ofs, tot,
+           req->content_len);
+
+  if (req->content_len == 0) {
+    // Final empty POST: finish OTA and reboot
+    if (esp_ota_end(ota_handle) != ESP_OK) {
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                          "esp_ota_end() failed\n");
+      return ESP_OK;
+    }
+    esp_ota_set_boot_partition(p);
+    httpd_resp_send(req, NULL, 0);
+    ESP_LOGI(TAG, "Time to reboot!");
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    esp_restart();
+    return ESP_OK;
+  }
+
+  if (ofs == 0) {
+    p = (esp_partition_t *)esp_ota_get_next_update_partition(NULL);
+    if (p == NULL || esp_ota_begin(p, tot, &ota_handle) != ESP_OK) {
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                          "esp_ota_begin() failed\n");
+      return ESP_OK;
     }
   }
+
+  char buf[1024];
+  int received;
+  size_t remaining = req->content_len;
+  while (remaining > 0) {
+    size_t to_recv = remaining < sizeof(buf) ? remaining : sizeof(buf);
+    received = httpd_req_recv(req, buf, to_recv);
+    if (received <= 0) {
+      esp_ota_abort(ota_handle);
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                          "recv failed\n");
+      return ESP_OK;
+    }
+    if (esp_ota_write(ota_handle, buf, received) != ESP_OK) {
+      esp_ota_abort(ota_handle);
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                          "esp_ota_write() failed\n");
+      return ESP_OK;
+    }
+    remaining -= received;
+  }
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
 }
 
-static void handle_firmware_info(struct mg_connection *c) {
+static esp_err_t handle_firmware_info(httpd_req_t *req) {
   const esp_partition_t *p = esp_ota_get_boot_partition();
-  esp_app_desc_t app_desc; // app description
+  esp_app_desc_t app_desc;
   char info[128] = {0};
 
   if (esp_ota_get_partition_description(p, &app_desc) == ESP_OK) {
@@ -293,48 +455,87 @@ static void handle_firmware_info(struct mg_connection *c) {
     strcat(info, app_desc.version);
     strcat(info, ",");
     strcat(info, p->label);
-    mg_http_reply(c, 200, "Content-Type: text/plain\r\n", info);
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_send(req, info, strlen(info));
   }
+  return ESP_OK;
 }
 
-/* HTTP request handler function. It implements the following endpoints:
- *  /upload - Saves the next file chunk
- *  /play - will play selected song
- *  /list - provides a list of files in /tunes folder
- *  /conf/get/file - get configuration file
- *  /conf/set - set configuration
- *  /firmware/upload - upload new firmware
- *  /firmware/info - gather details of currently booted image
- *  all other URI - serves /web_root folder
- */
-void cb(struct mg_connection *c, int ev, void *ev_data) {
-  if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *hm = (struct mg_http_message *)ev_data;
-    if (mg_match(hm->uri, mg_str("/upload"), NULL)) {
-      handle_upload(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/play"), NULL)) {
-      handle_play(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/list"), NULL)) {
-      // return list of files in /tunes folder
-      handle_list(c);
-    } else if (mg_match(hm->uri, mg_str("/conf/get/file1"), NULL)) {
-      handle_conf_get_file1(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/conf/get/file2"), NULL)) {
-      handle_conf_get_file2(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/conf/get/volume1"), NULL)) {
-      handle_conf_get_volume1(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/conf/get/volume2"), NULL)) {
-      handle_conf_get_volume2(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/conf/set"), NULL)) {
-      handle_conf_set(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/firmware/upload"), NULL)) {
-      handle_firmware_upload(c, hm);
-    } else if (mg_match(hm->uri, mg_str("/firmware/info"), NULL)) {
-      handle_firmware_info(c);
-    } else {
-      struct mg_http_serve_opts opts = {.root_dir = "/web_root",
-                                        .fs = &mg_fs_fat};
-      mg_http_serve_dir(c, ev_data, &opts);
-    }
-  }
+// ---------------------------------------------------------------------------
+// Server startup
+// ---------------------------------------------------------------------------
+esp_err_t start_webserver(void) {
+  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+  config.server_port = 80;
+  config.max_uri_handlers = 20; // we register 17 handlers
+  config.stack_size = 8192;     // increased from default 4096 for file I/O
+
+  httpd_handle_t server;
+  if (httpd_start(&server, &config) != ESP_OK)
+    return ESP_FAIL;
+
+  // Static file handlers
+  httpd_uri_t uri_index = {
+      .uri = "/", .method = HTTP_GET, .handler = handle_index};
+  httpd_uri_t uri_fw_html = {
+      .uri = "/fw.html", .method = HTTP_GET, .handler = handle_fw_html};
+  httpd_uri_t uri_app_js = {
+      .uri = "/app.js", .method = HTTP_GET, .handler = handle_app_js};
+  httpd_uri_t uri_fw_js = {
+      .uri = "/fw.js", .method = HTTP_GET, .handler = handle_fw_js};
+  httpd_uri_t uri_app_css = {
+      .uri = "/app.css", .method = HTTP_GET, .handler = handle_app_css};
+  httpd_uri_t uri_favicon = {
+      .uri = "/favicon.ico", .method = HTTP_GET, .handler = handle_favicon};
+  httpd_uri_t uri_background = {.uri = "/background.jpg",
+                                 .method = HTTP_GET,
+                                 .handler = handle_background};
+  // API handlers
+  httpd_uri_t uri_list = {
+      .uri = "/list", .method = HTTP_GET, .handler = handle_list};
+  httpd_uri_t uri_play = {
+      .uri = "/play", .method = HTTP_GET, .handler = handle_play};
+  httpd_uri_t uri_cfg_file1 = {.uri = "/conf/get/file1",
+                                .method = HTTP_GET,
+                                .handler = handle_conf_get_file1};
+  httpd_uri_t uri_cfg_file2 = {.uri = "/conf/get/file2",
+                                .method = HTTP_GET,
+                                .handler = handle_conf_get_file2};
+  httpd_uri_t uri_cfg_vol1 = {.uri = "/conf/get/volume1",
+                               .method = HTTP_GET,
+                               .handler = handle_conf_get_volume1};
+  httpd_uri_t uri_cfg_vol2 = {.uri = "/conf/get/volume2",
+                               .method = HTTP_GET,
+                               .handler = handle_conf_get_volume2};
+  httpd_uri_t uri_cfg_set = {
+      .uri = "/conf/set", .method = HTTP_GET, .handler = handle_conf_set};
+  httpd_uri_t uri_upload = {
+      .uri = "/upload", .method = HTTP_POST, .handler = handle_upload};
+  httpd_uri_t uri_fw_upload = {.uri = "/firmware/upload",
+                                .method = HTTP_POST,
+                                .handler = handle_firmware_upload};
+  httpd_uri_t uri_fw_info = {.uri = "/firmware/info",
+                              .method = HTTP_GET,
+                              .handler = handle_firmware_info};
+
+  httpd_register_uri_handler(server, &uri_index);
+  httpd_register_uri_handler(server, &uri_fw_html);
+  httpd_register_uri_handler(server, &uri_app_js);
+  httpd_register_uri_handler(server, &uri_fw_js);
+  httpd_register_uri_handler(server, &uri_app_css);
+  httpd_register_uri_handler(server, &uri_favicon);
+  httpd_register_uri_handler(server, &uri_background);
+  httpd_register_uri_handler(server, &uri_list);
+  httpd_register_uri_handler(server, &uri_play);
+  httpd_register_uri_handler(server, &uri_cfg_file1);
+  httpd_register_uri_handler(server, &uri_cfg_file2);
+  httpd_register_uri_handler(server, &uri_cfg_vol1);
+  httpd_register_uri_handler(server, &uri_cfg_vol2);
+  httpd_register_uri_handler(server, &uri_cfg_set);
+  httpd_register_uri_handler(server, &uri_upload);
+  httpd_register_uri_handler(server, &uri_fw_upload);
+  httpd_register_uri_handler(server, &uri_fw_info);
+
+  ESP_LOGI(TAG, "HTTP server started on port %d", config.server_port);
+  return ESP_OK;
 }

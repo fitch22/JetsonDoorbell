@@ -12,7 +12,6 @@
 #include "global.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "mongoose.h"
 #include "nvs_flash.h"
 #include <string.h>
 
